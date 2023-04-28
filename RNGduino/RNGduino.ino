@@ -6,8 +6,9 @@
 
 #define DIODE A0
 
-uint8_t rand_bits = 0;
-uint8_t rand_num = 0;  
+uint8_t   rand_bits = 0;
+uint32_t  rand_num = 0;  
+float     voltage = 0; 
 
 void setup() {
   Serial.begin(115200);
@@ -15,32 +16,18 @@ void setup() {
 }
 
 void loop() {
-  // extract last 2 bits from a random sample 
-  rand_bits = (analogRead(DIODE) & (1 << 0 | 1 << 1)); 
-  // populate last 2 bits of random number 
-  rand_num = rand_bits;
+  for(uint8_t i = 0; i < 32; i++) {
+    // extract last 2 bits from a random sample 
+    rand_bits = (analogRead(DIODE) & (1 << 0)); 
+    // shift bits into random number 
+    rand_num = rand_num | (rand_bits << i);
 
-  delay(1); 
+    delay(1); 
+  }
 
-  // extract last 2 bits from a random sample 
-  rand_bits = (analogRead(DIODE) & (1 << 0 | 1 << 1)); 
-  // populate next 2 bits of random number 
-  rand_num = rand_num | (rand_bits << 2);
+  // print number to UART
+  Serial.println(rand_num); 
+  delay(4);  
 
-  delay(1); 
-
-  // extract last 2 bits from a random sample 
-  rand_bits = (analogRead(DIODE) & (1 << 0 | 1 << 1)); 
-  // populate next 2 bits of random number 
-  rand_num = rand_num | (rand_bits << 4);
-
-  delay(1); 
-
-  // extract last 2 bits from a random sample 
-  rand_bits = (analogRead(DIODE) & (1 << 0 | 1 << 1)); 
-  // populate next 2 bits of random number 
-  rand_num = rand_num | (rand_bits << 6);
-
-  Serial.println(rand_num);
-  delay(10);  
+  rand_num = 0; 
 }

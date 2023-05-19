@@ -9,18 +9,13 @@
 // hardware defines 
 #define ADXL375 0x53    
 #define DIODE A0  
-
-#define LCG_FACTOR 1024
-#define LCG_SUM 0
-#define LCG_MOD 4294967296
+#define MIC   A3
 
 // variables
 uint8_t   x, y, z;        // x, y, and z axes for accelerometer    
 
 uint8_t   rand_bits = 0;  // temp variable, random bits
-uint32_t  rand_seed = 0;  // temp seed for PRNG
-uint32_t  rand_lcgo = 0;  // LCG output 
-uint32_t  rand_lcgp = 0;  // previous LCG output    
+uint32_t  rand_num = 0;  // temp seed for PRNG
 
 uint8_t   counter = 0;    // counter for superloop 
 
@@ -49,58 +44,40 @@ void setup() {
 
   // set DIODE as input 
   pinMode(DIODE, INPUT); 
+  pinMode(MIC, INPUT); 
   // minor delay for ensuring setup 
   delay(10);
 }
 
 void loop() {
-  if(counter % 16 == 0) {
-    // generate key for PRNG
-    for(uint8_t i = 0; i < 16; i++) {
-      // communicate to get data from ADXL375
-      /*
-      Wire.beginTransmission(ADXL375);
-      Wire.write(0x32); 
-      Wire.endTransmission(false);
+  for(uint8_t i = 0; i < 16; i++) {
+    // communicate to get data from ADXL375
+    Wire.beginTransmission(ADXL375);
+    Wire.write(0x32); 
+    Wire.endTransmission(false);
 
-      // read 6 byte over I2C, convert to normal values
-      Wire.requestFrom(ADXL375, 6, true); 
-      x = (int16_t)( Wire.read()| Wire.read() << 8); 
-      y = (int16_t)( Wire.read()| Wire.read() << 8); 
-      z = (int16_t)( Wire.read()| Wire.read() << 8); 
-      */ 
+    // read 6 byte over I2C, convert to normal values
+    Wire.requestFrom(ADXL375, 6, true); 
+    x = (int16_t)( Wire.read()| Wire.read() << 8); 
+    y = (int16_t)( Wire.read()| Wire.read() << 8); 
+    z = (int16_t)( Wire.read()| Wire.read() << 8); 
 
-      // extract last 2 bits from a random sample 
-      rand_bits = (analogRead(DIODE) & (1 << 1 | 1 << 0)); 
-      /*
-      else if(counter % 6 == 1) rand_bits = (x & (1 << 1 | 1 << 0)); 
-      else if(counter % 6 == 2) rand_bits = (analogRead(DIODE) & (1 << 1 | 1 << 0)); 
-      else if(counter % 6 == 3) rand_bits = (y & (1 << 1 | 1 << 0));
-      else if(counter % 6 == 4) rand_bits = (analogRead(DIODE) & (1 << 1 | 1 << 0)); 
-      else if(counter % 6 == 5) rand_bits = (z & (1 << 1 | 1 << 0));
-      */ 
-  
-      // shift bits into random number 
-      rand_seed = rand_seed | (rand_bits << 2*i);
+    // extract last 2 bits from a random sample 
+    if(i % 5 == 0) rand_bits = (analogRead(DIODE) & (1 << 1 | 1 << 0));
+    else if(i % 5 == 1) rand_bits = (x & (1 << 1 | 1 << 0)); 
+    else if(i % 5 == 2) rand_bits = (y & (1 << 1 | 1 << 0));  
+    else if(i % 5 == 3) rand_bits = (z & (1 << 1 | 1 << 0)); 
+    else if(i % 5 == 4)rand_bits = (analogRead(MIC) & (1 << 1 | 1 << 0)); 
 
-      delay(1); 
-    }
+    // shift bits into random number 
+    rand_num = rand_num | (rand_bits << 2*i);
 
-    // set seed as previous LCG output 
-    rand_lcgp = rand_seed; 
-
-    // reset variables 
-    counter = 0; 
-    rand_seed = 0; 
-  }
-
-  // implement LCG with the new seed
-  rand_lcgo = (rand_lcgp*LCG_FACTOR + LCG_SUM) % LCG_MOD; 
+    delay(1); 
+  } 
 
   // print number to UART
-  Serial.println(rand_lcgo);  
+  Serial.println(rand_num); 
+  delay(8); 
 
-  // reset counter and set previous value of LCG
-  rand_lcgp = rand_lcgo; 
-  counter++; 
+  rand_num = 0; 
 }
